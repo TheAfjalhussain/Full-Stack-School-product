@@ -1,0 +1,342 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><%= title %></h2>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+    <i class="bi bi-plus-lg"></i> Add New
+  </button>
+</div>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-danger"><%= error %></div>
+<% } %>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <% if (items.length > 0) { %>
+            <% const cols = Object.keys(items[0].dataValues).filter(k => !['createdAt','updatedAt'].includes(k)).slice(0, 6); %>
+            <% cols.forEach(col => { %>
+              <th><%= col %></th>
+            <% }); %>
+          <% } %>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.forEach((item, index) => { %>
+          <tr>
+            <td><%= index + 1 %></td>
+            <% const cols = Object.keys(item.dataValues).filter(k => !['createdAt','updatedAt'].includes(k)).slice(0, 6); %>
+            <% cols.forEach(col => { %>
+              <td>
+                <% const val = item[col]; %>
+                <% if (typeof val === 'string' && val.length > 80) { %>
+                  <%= val.substring(0, 80) %>...
+                <% } else if (typeof val === 'boolean') { %>
+                  <span class="badge bg-<%= val ? 'success' : 'secondary' %>"><%= val ? 'Yes' : 'No' %></span>
+                <% } else if (col === 'imageUrl' && val) { %>
+                  <img src="<%= val.startsWith('http') ? val : '/uploads/' + val %>" style="width:60px;height:40px;object-fit:cover;border-radius:4px">
+                <% } else if (Array.isArray(val)) { %>
+                  <span class="badge bg-info"><%= val.length %> items</span>
+                <% } else { %>
+                  <%= val %>
+                <% } %>
+              </td>
+            <% }); %>
+            <td>
+              <button class="btn btn-sm btn-outline-primary me-1" onclick='editItem(<%= JSON.stringify(item) %>)'>
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('<%= path === 'gallery' ? 'gallery-images' : path === 'staff' ? 'staff-members' : path %>', <%= item.id %>)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (items.length === 0) { %>
+          <tr><td colspan="20" class="text-center text-muted py-4">No items found. Click "Add New" to create one.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Add New <%= title %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="itemForm">
+          <input type="hidden" id="itemId" value="">
+          <div id="formFields"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveItem()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modelName = '<%= modelName %>';
+  const apiPath = '<%= path === "gallery" ? "gallery-images" : path === "staff" ? "staff-members" : path %>';
+
+  // Field definitions per model
+  const fieldDefs = {
+    HeroSlider: [
+      { name: 'imageUrl', label: 'Image', type: 'image', required: true },
+      { name: 'title', label: 'Title', type: 'text' },
+      { name: 'subtitle', label: 'Subtitle', type: 'textarea' },
+      { name: 'buttonText', label: 'Button Text', type: 'text' },
+      { name: 'buttonLink', label: 'Button Link', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' },
+      { name: 'isActive', label: 'Active', type: 'checkbox' }
+    ],
+    Statistic: [
+      { name: 'label', label: 'Label', type: 'text', required: true },
+      { name: 'value', label: 'Value', type: 'number', required: true },
+      { name: 'suffix', label: 'Suffix (+, %, etc)', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'page', label: 'Page', type: 'select', options: ['home', 'students', 'gallery', 'events'] },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    Testimonial: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'role', label: 'Role', type: 'text' },
+      { name: 'content', label: 'Content', type: 'textarea', required: true },
+      { name: 'rating', label: 'Rating (1-5)', type: 'number' },
+      { name: 'imageInitials', label: 'Initials', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' },
+      { name: 'isActive', label: 'Active', type: 'checkbox' }
+    ],
+    Feature: [
+      { name: 'title', label: 'Title', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'icon', label: 'Icon Name', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'section', label: 'Section', type: 'select', options: ['whyChoose', 'mission', 'whoShouldApply', 'aboutHighlight'] },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    Program: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'icon', label: 'Icon Name', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    GalleryImage: [
+      { name: 'title', label: 'Title', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'category', label: 'Category', type: 'select', options: ['Academics', 'STEM', 'Sports', 'Arts', 'Events'] },
+      { name: 'imageUrl', label: 'Image', type: 'image', required: true },
+      { name: 'altText', label: 'Alt Text', type: 'text' },
+      { name: 'isFeatured', label: 'Featured', type: 'checkbox' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    FeaturedMoment: [
+      { name: 'title', label: 'Title', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'date', label: 'Date', type: 'text' },
+      { name: 'imageUrl', label: 'Image', type: 'image' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    StaffMember: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'title', label: 'Title/Position', type: 'text' },
+      { name: 'badge', label: 'Badge', type: 'text' },
+      { name: 'bio', label: 'Bio', type: 'textarea' },
+      { name: 'imageInitials', label: 'Initials', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    CoreValue: [
+      { name: 'title', label: 'Title', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'icon', label: 'Icon Name', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    Facility: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'icon', label: 'Icon Name', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    Student: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'grade', label: 'Grade', type: 'text' },
+      { name: 'quote', label: 'Quote', type: 'textarea' },
+      { name: 'imageInitials', label: 'Initials', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'isFeatured', label: 'Featured', type: 'checkbox' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    StudentClub: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'memberCount', label: 'Members', type: 'number' },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'icon', label: 'Icon Name', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    AcademicTerm: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'season', label: 'Season', type: 'text' },
+      { name: 'startDate', label: 'Start Date', type: 'text' },
+      { name: 'endDate', label: 'End Date', type: 'text' },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'badgeColor', label: 'Badge Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    CalendarEvent: [
+      { name: 'title', label: 'Title', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'date', label: 'Date', type: 'text' },
+      { name: 'startTime', label: 'Start Time', type: 'text' },
+      { name: 'endTime', label: 'End Time', type: 'text' },
+      { name: 'location', label: 'Location', type: 'text' },
+      { name: 'category', label: 'Category', type: 'text' },
+      { name: 'imageUrl', label: 'Image', type: 'image' },
+      { name: 'badgeColor', label: 'Badge Color', type: 'text' },
+      { name: 'isPast', label: 'Past Event', type: 'checkbox' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    ImportantDate: [
+      { name: 'category', label: 'Category', type: 'select', options: ['Examination Periods', 'Holiday Breaks', 'Application Deadlines'] },
+      { name: 'eventName', label: 'Event Name', type: 'text', required: true },
+      { name: 'dateRange', label: 'Date Range', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    Department: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'email', label: 'Email', type: 'text' },
+      { name: 'phone', label: 'Phone', type: 'text' },
+      { name: 'phoneExtension', label: 'Extension', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    OverviewItem: [
+      { name: 'section', label: 'Section', type: 'select', options: ['academic', 'studentLife'] },
+      { name: 'text', label: 'Text', type: 'text', required: true },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ],
+    EventCategory: [
+      { name: 'name', label: 'Name', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'icon', label: 'Icon Name', type: 'text' },
+      { name: 'color', label: 'Color', type: 'text' },
+      { name: 'displayOrder', label: 'Order', type: 'number' }
+    ]
+  };
+
+  function buildForm(data = {}) {
+    const fields = fieldDefs[modelName] || [];
+    let html = '';
+    fields.forEach(f => {
+      if (f.type === 'checkbox') {
+        html += `<div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="${f.name}" name="${f.name}" ${data[f.name] ? 'checked' : ''}>
+          <label class="form-check-label" for="${f.name}">${f.label}</label>
+        </div>`;
+      } else if (f.type === 'textarea') {
+        html += `<div class="mb-3">
+          <label class="form-label">${f.label}</label>
+          <textarea class="form-control" name="${f.name}" rows="3" ${f.required ? 'required' : ''}>${data[f.name] || ''}</textarea>
+        </div>`;
+      } else if (f.type === 'select') {
+        html += `<div class="mb-3">
+          <label class="form-label">${f.label}</label>
+          <select class="form-select" name="${f.name}">
+            ${f.options.map(o => `<option value="${o}" ${data[f.name] === o ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
+        </div>`;
+      } else if (f.type === 'image') {
+        const currentImg = data[f.name];
+        html += `<div class="mb-3">
+          <label class="form-label">${f.label}</label>
+          <input type="file" class="form-control" name="${f.name}" accept="image/jpeg,image/png,image/gif,image/webp">
+          <input type="hidden" name="${f.name}_current" value="${currentImg || ''}">
+          ${currentImg ? `<div class="mt-2">
+            <small class="text-muted">Current image:</small><br>
+            <img src="${currentImg.startsWith('http') ? currentImg : '/uploads/' + currentImg.replace('/uploads/', '')}" style="max-width:200px;max-height:120px;object-fit:cover;border-radius:6px;margin-top:4px">
+          </div>` : ''}
+        </div>`;
+      } else {
+        html += `<div class="mb-3">
+          <label class="form-label">${f.label}</label>
+          <input type="${f.type}" class="form-control" name="${f.name}" value="${data[f.name] !== undefined && data[f.name] !== null ? data[f.name] : ''}" ${f.required ? 'required' : ''}>
+        </div>`;
+      }
+    });
+    document.getElementById('formFields').innerHTML = html;
+  }
+
+  function editItem(item) {
+    document.getElementById('itemId').value = item.id;
+    document.getElementById('modalTitle').textContent = 'Edit ' + '<%= title %>';
+    buildForm(item);
+    new bootstrap.Modal(document.getElementById('createModal')).show();
+  }
+
+  document.getElementById('createModal').addEventListener('show.bs.modal', function(e) {
+    if (!document.getElementById('itemId').value) {
+      document.getElementById('modalTitle').textContent = 'Add New ' + '<%= title %>';
+      buildForm();
+    }
+  });
+
+  document.getElementById('createModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('itemId').value = '';
+  });
+
+  async function saveItem() {
+    const fields = fieldDefs[modelName] || [];
+    const data = {};
+    const saveBtn = document.querySelector('.modal-footer .btn-primary');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    try {
+      for (const f of fields) {
+        if (f.type === 'checkbox') {
+          data[f.name] = document.querySelector(`[name="${f.name}"]`).checked;
+        } else if (f.type === 'image') {
+          const fileInput = document.querySelector(`input[type="file"][name="${f.name}"]`);
+          const currentInput = document.querySelector(`[name="${f.name}_current"]`);
+          if (fileInput.files.length > 0) {
+            // Upload the file first
+            const url = await uploadImage(fileInput.files[0]);
+            data[f.name] = url;
+          } else if (currentInput && currentInput.value) {
+            // Keep existing image
+            data[f.name] = currentInput.value;
+          }
+        } else if (f.type === 'number') {
+          data[f.name] = parseInt(document.querySelector(`[name="${f.name}"]`).value) || 0;
+        } else {
+          data[f.name] = document.querySelector(`[name="${f.name}"]`).value;
+        }
+      }
+
+      const id = document.getElementById('itemId').value;
+      if (id) {
+        await updateItem(apiPath, id, data);
+      } else {
+        await createItem(apiPath, data);
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save';
+    }
+  }
+</script>

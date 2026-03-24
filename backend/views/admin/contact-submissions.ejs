@@ -1,0 +1,89 @@
+<h2 class="mb-4">Contact Submissions</h2>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Status</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Subject</th>
+          <th>Message</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% submissions.forEach(sub => { %>
+          <tr class="<%= sub.isRead ? '' : 'table-warning' %>">
+            <td>
+              <span class="badge bg-<%= sub.isRead ? 'secondary' : 'warning' %>">
+                <%= sub.isRead ? 'Read' : 'New' %>
+              </span>
+            </td>
+            <td><strong><%= sub.name %></strong></td>
+            <td><%= sub.email %></td>
+            <td><%= sub.subject %></td>
+            <td><%= sub.message ? sub.message.substring(0, 60) : '' %>...</td>
+            <td><%= new Date(sub.createdAt).toLocaleDateString() %></td>
+            <td>
+              <button class="btn btn-sm btn-outline-info me-1" onclick='viewSubmission(<%= JSON.stringify(sub) %>)'>
+                <i class="bi bi-eye"></i>
+              </button>
+              <% if (!sub.isRead) { %>
+                <button class="btn btn-sm btn-outline-success me-1" onclick="markRead(<%= sub.id %>)">
+                  <i class="bi bi-check"></i>
+                </button>
+              <% } %>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteSubmission(<%= sub.id %>)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (submissions.length === 0) { %>
+          <tr><td colspan="7" class="text-center text-muted py-4">No submissions yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- View Modal -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Message Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="messageBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function viewSubmission(sub) {
+    document.getElementById('messageBody').innerHTML = `
+      <p><strong>From:</strong> ${sub.name} (${sub.email})</p>
+      <p><strong>Subject:</strong> ${sub.subject || 'N/A'}</p>
+      <p><strong>Date:</strong> ${new Date(sub.createdAt).toLocaleString()}</p>
+      <hr>
+      <p>${sub.message}</p>
+    `;
+    new bootstrap.Modal(document.getElementById('viewModal')).show();
+    if (!sub.isRead) markRead(sub.id);
+  }
+
+  async function markRead(id) {
+    await fetch(`/api/admin/contact-submissions/${id}/read`, { method: 'PATCH', credentials: 'include' });
+    location.reload();
+  }
+
+  async function deleteSubmission(id) {
+    if (!confirm('Delete this submission?')) return;
+    await fetch(`/api/admin/contact-submissions/${id}`, { method: 'DELETE', credentials: 'include' });
+    location.reload();
+  }
+</script>

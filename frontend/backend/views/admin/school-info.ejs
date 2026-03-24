@@ -1,0 +1,82 @@
+<h2 class="mb-4">School Information</h2>
+
+<div class="card">
+  <div class="card-body">
+    <form id="schoolInfoForm">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">School Name</label>
+          <input type="text" class="form-control" name="name" value="<%= info.name || '' %>">
+        </div>
+        <div class="col-md-3 mb-3">
+          <label class="form-label">Founded Year</label>
+          <input type="number" class="form-control" name="foundedYear" value="<%= info.foundedYear || '' %>">
+        </div>
+        <div class="col-md-3 mb-3">
+          <label class="form-label">Student Count</label>
+          <input type="number" class="form-control" name="studentCount" value="<%= info.studentCount || '' %>">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Address</label>
+        <textarea class="form-control" name="address" rows="2"><%= info.address || '' %></textarea>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Phone</label>
+          <input type="text" class="form-control" name="phone" value="<%= info.phone || '' %>">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" name="email" value="<%= info.email || '' %>">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Office Hours</label>
+          <input type="text" class="form-control" name="officeHours" value="<%= info.officeHours || '' %>">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" name="description" rows="3"><%= info.description || '' %></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Footer Tagline</label>
+        <input type="text" class="form-control" name="footerTagline" value="<%= info.footerTagline || '' %>">
+      </div>
+
+      <hr class="my-4">
+      <h5 class="mb-3">External Links & Embeds</h5>
+
+      <div class="mb-3">
+        <label class="form-label">Admission URL</label>
+        <input type="text" class="form-control" name="admissionUrl" value="<%= info.admissionUrl || '' %>" placeholder="https://forms.google.com/... or any external URL">
+        <small class="text-muted">The "Admissions Open" button in the navbar will link to this URL</small>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Contact Form Embed Code</label>
+        <textarea class="form-control" name="contactFormEmbed" rows="5" placeholder="Paste your Google Form / Typeform / JotForm iframe embed code here"><%= info.contactFormEmbed || '' %></textarea>
+        <small class="text-muted">Paste the full iframe embed code. This will replace the built-in contact form on the Contact page.</small>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="saveSchoolInfo()">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  async function saveSchoolInfo() {
+    const form = document.getElementById('schoolInfoForm');
+    const data = {};
+    new FormData(form).forEach((val, key) => { data[key] = val; });
+    data.foundedYear = parseInt(data.foundedYear) || null;
+    data.studentCount = parseInt(data.studentCount) || null;
+    await apiCall('/school-info', 'PUT', data);
+    alert('School info updated!');
+    location.reload();
+  }
+</script>
