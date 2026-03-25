@@ -56,7 +56,18 @@ export default function Footer() {
             <p className="text-gray-300 leading-relaxed text-sm">
               {schoolDescription}
             </p>
+
+            <div className="flex items-center gap-4">
+            {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
+              <Icon
+                key={i}
+                size={18}
+                className="text-gray-400 hover:text-amber-400 cursor-pointer transition-transform duration-300 hover:scale-110"
+              />
+            ))}
           </div>
+          </div>
+          
 
           {/* PAGES */}
           <div>
@@ -151,16 +162,6 @@ export default function Footer() {
             Developed & Designed by: Growthix & Apdigi
           </Link>
 
-          {/* SOCIAL */}
-          <div className="flex items-center gap-4">
-            {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-              <Icon
-                key={i}
-                size={18}
-                className="text-gray-400 hover:text-amber-400 cursor-pointer transition-transform duration-300 hover:scale-110"
-              />
-            ))}
-          </div>
         </div>
       </div>
     </footer>

@@ -103,7 +103,7 @@ export default function StudentsPage() {
                     </div>
                   </div>
 
-                  <p className=" text-sm italic">"{student.quote}"</p>
+                  <p className="text-sm italic"> {student.quote}</p>
                 </CardContent>
               </Card>
             ))}

@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ArrowRight, CheckCircle, Star } from 'lucide-react';
 import { getIcon } from '@/lib/icon-map';
 import { api, getImageUrl } from '@/lib/api';
 import { useApi } from '@/hooks/use-api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import batch from '@/public/images/batc-removebg-preview.png'
-import acadimic from '@/public/images/class2.png'
+import batch from '@/public/images/RKmissionHeroImag..png';
+import acadimic from '@/public/images/class2.png';
 
 interface CounterProps {
   end: number;
@@ -23,19 +22,31 @@ function Counter({ end, duration, suffix = '' }: CounterProps) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let startTime: number;
+    let startTime = 0;
+    let rafId: number;
+
     const animateCount = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
+
       const progress = Math.min((timestamp - startTime) / duration, 1);
       setCount(Math.floor(progress * end));
+
       if (progress < 1) {
-        requestAnimationFrame(animateCount);
+        rafId = requestAnimationFrame(animateCount);
       }
     };
-    requestAnimationFrame(animateCount);
+
+    rafId = requestAnimationFrame(animateCount);
+
+    return () => cancelAnimationFrame(rafId);
   }, [end, duration]);
 
-  return <span className="animate-count-up">{count}{suffix}</span>;
+  return (
+    <span className="animate-count-up">
+      {count}
+      {suffix}
+    </span>
+  );
 }
 
 export default function HomePage() {
@@ -54,23 +65,51 @@ export default function HomePage() {
   const { data: academicItems } = useApi(() => api.getOverviewItems('academic'), []);
   const { data: studentLifeItems } = useApi(() => api.getOverviewItems('studentLife'), []);
   const { data: schoolInfo } = useApi(() => api.getSchoolInfo(), []);
+
   const schoolName = schoolInfo?.name || 'Our School';
+
+  // ✅ FIXED loading logic
+  const isLoading =
+    !heroSliders ||
+    !stats ||
+    !testimonials ||
+    !whyChooseFeatures ||
+    !missionFeatures ||
+    !whoShouldApply ||
+    !aboutHighlights ||
+    !programs ||
+    !galleryImages ||
+    !academicItems ||
+    !studentLifeItems ||
+    !schoolInfo;
 
   useEffect(() => {
     if (!testimonials?.length) return;
+
     const timer = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 5000);
+
     return () => clearInterval(timer);
   }, [testimonials]);
 
   useEffect(() => {
     if (!heroSliders?.length) return;
+
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % heroSliders.length);
     }, 4000);
+
     return () => clearInterval(interval);
   }, [heroSliders]);
+
+  if (isLoading) {
+    return (
+      <div className="pt-20">
+        <LoadingSpinner text="Loading page..." />
+      </div>
+    );
+  }
 
   const images = heroSliders || [];
   const currentImage = images[currentIndex];
@@ -105,12 +144,8 @@ export default function HomePage() {
             </p>
       
             <div className="flex gap-4 flex-wrap">
-              <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-white">
-                Apply Now
-              </Button>
-      
               <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-black">
-                Explore More
+                {currentImage?.buttonText || 'Apply for Admission'} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -170,7 +205,7 @@ export default function HomePage() {
                  width={500}
                  height={450}
                  priority
-                 className="rounded-2xl shadow-2xl w-full h-[400px] md:h-[550px]"
+                 className="rounded-2xl shadow-2xl w-full h-auto"
                />
              </div>
           </div>
